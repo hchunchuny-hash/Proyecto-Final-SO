@@ -6,6 +6,7 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <title>@yield('titulo', 'Inicio') · SysMonitor</title>
 <link rel="stylesheet" href="{{ asset('css/sysmonitor.css') }}">
+<link rel="stylesheet" href="{{ asset('css/componentes.css') }}">
 @stack('estilos')
 </head>
 <body>
