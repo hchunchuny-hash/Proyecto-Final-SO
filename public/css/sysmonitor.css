@@ -1,0 +1,26 @@
+:root{--fondo:#13100d;--panel:#1c1814;--panel2:#241f1a;--borde:#3a332b;--texto:#efe8dc;--suave:#a0958a;--acento:#ffb000;--ok:#6fd08c;--error:#ff6b5c;--radio:3px;--mono:ui-monospace,"Cascadia Code",Consolas,"Liberation Mono",monospace}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--fondo);color:var(--texto);border-top:3px solid var(--acento);font:14px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+a:focus-visible,button:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+.barra{position:sticky;top:0;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:0 20px;padding:0 24px;background:var(--panel);border-bottom:1px solid var(--borde)}
+.marca{display:flex;align-items:center;gap:9px;padding:13px 0;color:var(--texto);text-decoration:none;font:700 16px var(--mono)}
+.marca svg{color:var(--acento)}
+.marca em{font-style:normal;font-weight:400;color:var(--suave);font-size:12px;border-left:1px solid var(--borde);padding-left:9px}
+.menu{display:flex;flex:1;gap:4px;padding:8px 0;overflow-x:auto}
+.menu a{display:flex;align-items:center;gap:7px;padding:7px 11px;color:var(--suave);text-decoration:none;white-space:nowrap;border-radius:var(--radio)}
+.menu a b{font:600 11px var(--mono);color:var(--acento)}
+.menu a:hover{color:var(--texto);background:var(--panel2)}
+.menu a.activo{background:var(--acento);color:#13100d;font-weight:600}
+.menu a.activo b{color:#13100d}
+.usuario{display:flex;align-items:center;gap:10px;font-size:13px}
+.rol{font:600 11px var(--mono);padding:2px 8px;border:1px solid var(--borde);border-radius:2px;color:var(--suave)}
+.rol.admin{color:var(--acento);border-color:var(--acento)}
+.salir{background:transparent;color:var(--texto);border:1px solid var(--borde);border-radius:var(--radio);padding:5px 12px;font:inherit;cursor:pointer}
+.salir:hover{border-color:var(--acento);color:var(--acento)}
+.titulo-pagina,.contenido{width:100%;max-width:1200px;margin:0 auto;padding-left:24px;padding-right:24px}
+.titulo-pagina{padding-top:24px}
+.titulo-pagina h1{margin:0;font:700 22px var(--mono)}
+.titulo-pagina p{margin:3px 0 0;color:var(--suave);font-size:13px}
+.contenido{flex:1;padding-top:20px;padding-bottom:40px}
+.pie{padding:12px 24px;border-top:1px solid var(--borde);color:var(--suave);font:12px var(--mono)}
+@media (max-width:800px){.barra{padding:0 14px}.menu{order:3;flex-basis:100%}.usuario{margin-left:auto}.titulo-pagina,.contenido{padding-left:14px;padding-right:14px}}
