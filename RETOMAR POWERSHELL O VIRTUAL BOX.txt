@@ -1,0 +1,3 @@
+cd ~/sysmonitor
+git checkout feature/m6-integracion
+mkdir -p resources/views/layouts resources/views/partials public/css

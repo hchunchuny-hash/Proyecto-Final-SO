@@ -1,0 +1,72 @@
+INSTRUCCIONES PARA CORRER SYSMONITOR EN TU MÁQUINA
+
+Repositorio: https://github.com/hchunchuny-hash/Proyecto-Final-SO
+
+Importante: el proyecto debe correr en la máquina Debian (la de VirtualBox).
+No sirve Windows ni XAMPP, porque los módulos leen /proc y usan comandos de Linux.
+
+1) Instalar lo necesario (una sola vez, en Debian):
+sudo apt update
+sudo apt install -y git unzip curl sqlite3 php php-cli php-sqlite3 php-mbstring php-xml php-curl php-zip composer
+php -v
+(php -v debe decir 8.3 o superior. Si dice 8.2, esa máquina no sirve
+para este proyecto: usen la Debian 13.)
+
+2) Configurar Git (una sola vez). Usen el correo de SU cuenta de GitHub,
+para que los commits cuenten a su nombre:
+git config --global user.name "Su Nombre"
+git config --global user.email "correo-de-su-github@ejemplo.com"
+
+3) Descargar el proyecto:
+git clone https://github.com/hchunchuny-hash/Proyecto-Final-SO.git
+cd Proyecto-Final-SO
+
+4) Instalar dependencias y configurar:
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+(Si pregunta si quiere crear la base de datos SQLite, respondan que sí.)
+
+5) Agregar contraseñas al .env (yo se las paso por privado, NO las suban a GitHub):
+nano .env
+Agreguen al FINAL del archivo estas dos líneas:
+ADMIN_PASSWORD="la-que-les-di"
+OBSERVER_PASSWORD="la-que-les-di"
+Guardar: Ctrl+O, Enter, Ctrl+X
+
+6) Crear los usuarios y arrancar:
+php artisan db:seed --class=UsuariosSeeder
+php artisan serve --host=0.0.0.0
+
+7) Ver la página desde Windows:
+En VirtualBox: su máquina > Configuración > Red > Adaptador 1 > Avanzadas >
+Reenvío de puertos > agregar regla TCP, anfitrión 127.0.0.1 puerto 8000,
+huésped puerto 8000 (no borren la regla de SSH, son dos reglas distintas).
+Abrir en el navegador de Windows: http://127.0.0.1:8000
+
+Usuarios de prueba:
+admin@sysmonitor.local  (Administrador)
+observador@sysmonitor.local  (Observador)
+
+TRABAJAR EN SU MÓDULO:
+git checkout main
+git pull
+git checkout -b feature/mX-nombre      (ej: feature/m1-procesos)
+... trabajar y hacer commits pequeños y frecuentes ...
+git add <archivos de su módulo>
+git commit -m "M1: descripción clara de lo que hicieron"
+git push -u origin feature/mX-nombre
+Luego en GitHub: Compare & pull request hacia main y pedir revisión a otro compañero.
+
+REGLAS:
+- Nunca hacer push directo a main.
+- Mínimo 10 commits por persona, repartidos en el tiempo.
+- Su pantalla debe extender la plantilla: @extends('layouts.app')
+- El nombre de su ruta debe ser: procesos.index, memoria.index, planificacion.index,
+  interbloqueos.index o almacenamiento.index, para que aparezca en el menú.
+- Para ejecutar comandos del sistema usar SOLO App\Services\CommandRunner.
+  Nada de shell_exec, exec, system ni proc_open directos.
+- Cada acción administrativa va con RolMiddleware ':admin'.
+- Las clases CSS disponibles están en el Manual 4 (tarjeta, tabla, insignia, btn...).
+- Nunca subir el archivo .env ni mostrarlo en capturas.

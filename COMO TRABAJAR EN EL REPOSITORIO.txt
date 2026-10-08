@@ -1,0 +1,17 @@
+Repositorio: https://github.com/hchunchuny-hash/Proyecto-Final-SO
+
+Primera vez (una sola vez):
+git clone https://github.com/hchunchuny-hash/Proyecto-Final-SO.git
+cd Proyecto-Final-SO
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+
+Para trabajar (todos los días):
+git checkout -b feature/mX-nombre     (solo la primera vez, ej: feature/m1-procesos)
+... trabajar y hacer commits pequeños ...
+git push -u origin feature/mX-nombre
+Abrir Pull Request hacia main y pedir revisión a otro compañero.
+
+No hacer push directo a main. Mínimo 10 commits por persona, repartidos en el tiempo.

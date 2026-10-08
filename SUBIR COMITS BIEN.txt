@@ -1,0 +1,4 @@
+git status
+git add public/css/sysmonitor.css resources/views/layouts/app.blade.php resources/views/partials/menu.blade.php resources/views/dashboard.blade.php
+git commit -m "M6: layout base con barra de navegación superior"
+git push

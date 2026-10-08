@@ -1,0 +1,17 @@
+Retomar mañana
+Abre VirtualBox, selecciona la máquina Debian y presiona Iniciar. Espera a que aparezca la pantalla de login (no hace falta iniciar sesión ahí).
+En PowerShell de Windows conéctate:
+ssh -p 2222 tecnico1@127.0.0.1
+Ya dentro:
+bash
+
+cd ~/sysmonitor
+git checkout feature/m6-integracion
+git status
+
+Cuando quieras ver la app: 
+php artisan view:clear
+php artisan serve --host=0.0.0.0 y abre http://127.0.0.1:8000 en el navegador de Windows.
+Dos cosas para mañana
+El token de GitHub: se guardó en memoria por una hora, así que mañana el primer git push o git pull te pedirá otra vez el usuario y el token. Ten el token guardado en un lugar seguro donde puedas copiarlo.
+Si ssh no conecta: casi siempre es que la máquina todavía está arrancando. Espera un minuto e inténtalo de nuevo.
