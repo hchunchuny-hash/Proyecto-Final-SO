@@ -193,3 +193,50 @@
         </table>
     </div>
 </section>
+
+{{-- Vista de Árbol Padre-Hijo --}}
+<section class="tarjeta" style="margin-top: 1.5rem;">
+    <h2>Árbol de Procesos (Jerarquía Padre-Hijo)</h2>
+    <p class="nota">Estructura derivada de la llamada al sistema fork() expresada mediante PPID</p>
+
+    @php
+        function renderNodoArbol($pid, $arbol, $nivel = 0) {
+            if ($nivel > 5) return; // Limitar profundidad visual
+            $proceso = $arbol['por_pid'][$pid] ?? null;
+            if (!$proceso) return;
+
+            $hijos = $arbol['hijos'][$pid] ?? [];
+            $tieneHijos = count($hijos) > 0;
+            @endphp
+
+            <div style="margin-left: {{ $nivel * 1.2 }}rem; margin-top: 0.3rem;">
+                @if ($tieneHijos)
+                    <details>
+                        <summary style="cursor: pointer; font-family: var(--mono);">
+                            <strong>PID {{ $proceso['pid'] }}</strong> - {{ $proceso['comando'] }}
+                            <small>({{ count($hijos) }} hijos, User: {{ $proceso['usuario'] }})</small>
+                        </summary>
+                        <div style="border-left: 2px solid var(--borde); padding-left: 0.5rem; margin-top: 0.2rem;">
+                            @foreach ($hijos as $hijoPid)
+                                @php renderNodoArbol($hijoPid, $arbol, $nivel + 1); @endphp
+                            @endforeach
+                        </div>
+                    </details>
+                @else
+                    <div style="font-family: var(--mono); font-size: 0.9rem; color: var(--suave);">
+                        ├─ PID {{ $proceso['pid'] }} - {{ $proceso['comando'] }} <small>({{ $proceso['usuario'] }})</small>
+                    </div>
+                @endif
+            </div>
+            @php
+        }
+    @endphp
+
+    <div style="max-height: 500px; overflow-y: auto; padding-right: 0.5rem;">
+        @foreach ($arbol['raices'] as $raizPid)
+            @php renderNodoArbol($raizPid, $arbol, 0); @endphp
+        @endforeach
+    </div>
+</section>
+
+@endsection
