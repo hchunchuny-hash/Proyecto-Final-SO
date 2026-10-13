@@ -121,7 +121,7 @@
             </form>
         </div>
     </div>
-</section>
+ </section>
 
 {{-- Buscador y Tabla de Procesos --}}
 <section class="tarjeta" style="margin-top: 1.5rem;">
@@ -137,3 +137,59 @@
             <a href="{{ route('procesos.index') }}" class="btn sec" style="text-decoration: none; text-align: center;">Limpiar</a>
         @endif
     </form>
+
+    <div class="caja-tabla">
+        <table class="tabla">
+            <thead>
+                <tr>
+                    @php
+                        function urlOrden($col, $ordenActual, $dirActual) {
+                            $nuevaDir = ($ordenActual === $col && $dirActual === 'asc') ? 'desc' : 'asc';
+                            return route('procesos.index', array_merge(request()->query(), ['orden' => $col, 'direccion' => $nuevaDir]));
+                        }
+                    @endphp
+                    <th><a href="{{ urlOrden('pid', $orden, $direccion) }}">PID</a></th>
+                    <th><a href="{{ urlOrden('ppid', $orden, $direccion) }}">PPID</a></th>
+                    <th><a href="{{ urlOrden('usuario', $orden, $direccion) }}">Usuario</a></th>
+                    <th><a href="{{ urlOrden('estado', $orden, $direccion) }}">Estado</a></th>
+                    <th class="num"><a href="{{ urlOrden('nice', $orden, $direccion) }}">Nice</a></th>
+                    <th class="num"><a href="{{ urlOrden('cpu', $orden, $direccion) }}">% CPU</a></th>
+                    <th class="num"><a href="{{ urlOrden('memoria_kb', $orden, $direccion) }}">RAM</a></th>
+                    <th><a href="{{ urlOrden('comando', $orden, $direccion) }}">Comando</a></th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($procesos as $p)
+                    <tr>
+                        <td class="num"><strong>{{ $p['pid'] }}</strong></td>
+                        <td class="num">{{ $p['ppid'] }}</td>
+                        <td>{{ $p['usuario'] }}</td>
+                        <td>
+                            @if ($p['estado'] === 'R')
+                                <span class="insignia ok">R (Running)</span>
+                            @elseif ($p['estado'] === 'Z')
+                                <span class="insignia error">Z (Zombie)</span>
+                            @elseif ($p['estado'] === 'D' || $p['estado'] === 'T')
+                                <span class="insignia aviso">{{ $p['estado'] }}</span>
+                            @else
+                                <span class="insignia">{{ $p['estado'] }} (Sleep)</span>
+                            @endif
+                        </td>
+                        <td class="num">{{ $p['nice'] }}</td>
+                        <td class="num">{{ number_format($p['cpu'], 2) }}%</td>
+                        <td class="num">{{ $p['memoria'] }}</td>
+                        <td style="font-family: var(--mono); font-size: 0.85rem; word-break: break-all;">
+                            {{ $p['comando'] }}
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 1.5rem;">
+                            No se encontraron procesos que coincidan con la búsqueda.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</section>
