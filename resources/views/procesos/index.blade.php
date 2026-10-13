@@ -103,3 +103,37 @@
                 <button type="submit" class="btn sec" style="margin-top: 0.5rem;">Enviar Señal</button>
             </form>
         </div>
+
+	{{-- Formulario 3: Cambiar Prioridad --}}
+        <div>
+            <h3>Cambiar Prioridad (Renice)</h3>
+            <form action="{{ route('procesos.prioridad') }}" method="POST">
+                @csrf
+                <div class="campo">
+                    <label for="pid_nice">PID del Proceso:</label>
+                    <input type="number" id="pid_nice" name="pid" min="1" required placeholder="Ej: 1234">
+                </div>
+                <div class="campo" style="margin-top: 0.5rem;">
+                    <label for="prioridad">Nuevo Valor Nice (-20 a 19):</label>
+                    <input type="number" id="prioridad" name="prioridad" value="10" min="-20" max="19" required>
+                </div>
+                <button type="submit" class="btn sec" style="margin-top: 0.5rem;">Aplicar Renice</button>
+            </form>
+        </div>
+    </div>
+</section>
+
+{{-- Buscador y Tabla de Procesos --}}
+<section class="tarjeta" style="margin-top: 1.5rem;">
+    <h2>Listado General de Procesos</h2>
+    <p class="nota">Datos capturados dinámicamente desde /proc/[pid]/stat y /proc/[pid]/status</p>
+
+    <form method="GET" action="{{ route('procesos.index') }}" style="margin-bottom: 1rem; display: flex; gap: 0.5rem;">
+        <div class="campo" style="flex: 1;">
+            <input type="text" name="buscar" value="{{ $buscar }}" placeholder="Buscar por PID, PPID, usuario, estado o comando...">
+        </div>
+        <button type="submit" class="btn">Buscar</button>
+        @if ($buscar)
+            <a href="{{ route('procesos.index') }}" class="btn sec" style="text-decoration: none; text-align: center;">Limpiar</a>
+        @endif
+    </form>
