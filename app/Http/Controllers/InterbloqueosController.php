@@ -46,6 +46,38 @@ class InterbloqueosController extends Controller
         return response()->json($resultado);
     }
 
+    public function solicitud(Request $request, Banquero $banquero): JsonResponse
+    {
+        [$asignacion, $maximo, $disponible] = $this->datos($request);
+
+        $extra = $request->validate([
+            'proceso'      => ['required', 'integer', 'min:0', 'max:9'],
+            'solicitud'    => ['required', 'array', 'min:1', 'max:6'],
+            'solicitud.*'  => ['required', 'integer', 'min:0', 'max:99'],
+        ]);
+
+        $proceso = (int) $extra['proceso'];
+        $solicitud = array_map('intval', array_values($extra['solicitud']));
+
+        if ($proceso >= count($asignacion)) {
+            abort(422, 'El proceso elegido no existe.');
+        }
+        if (count($solicitud) !== count($disponible)) {
+            abort(422, 'La solicitud debe tener un valor por cada recurso.');
+        }
+
+        $resultado = $banquero->solicitar($asignacion, $maximo, $disponible, $proceso, $solicitud);
+
+        RegistroBitacora::registrar(
+            'Evaluación de solicitud de recursos',
+            'P' . ($proceso + 1),
+            RegistroBitacora::EXITO,
+            'Decisión: ' . $resultado['decision']
+        );
+
+        return response()->json($resultado);
+    }
+
     /** Valida las matrices que escribe el usuario y las devuelve como enteros. */
     private function datos(Request $request): array
     {

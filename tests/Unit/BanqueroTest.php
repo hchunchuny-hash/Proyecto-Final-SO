@@ -54,4 +54,46 @@ class BanqueroTest extends TestCase
 
         $this->assertFalse($r['interbloqueo']);
     }
+
+    public function test_solicitud_que_supera_la_necesidad_es_error(): void
+    {
+        $r = (new Banquero())->solicitar(
+            [[0, 1, 0], [2, 0, 0]], [[7, 5, 3], [3, 2, 2]], [3, 3, 2], 1, [2, 0, 0]
+        );
+
+        $this->assertSame('error', $r['decision']);
+    }
+
+    public function test_solicitud_mayor_que_lo_disponible_espera(): void
+    {
+        $r = (new Banquero())->solicitar(
+            [[0, 1, 0], [2, 0, 0]], [[7, 5, 3], [3, 2, 2]], [1, 0, 0], 0, [2, 0, 0]
+        );
+
+        $this->assertSame('espera', $r['decision']);
+    }
+
+    public function test_solicitud_se_concede_si_el_estado_queda_seguro(): void
+    {
+        // Ejemplo clásico: P1 pide (1,0,2) con disponible (3,3,2).
+        $r = (new Banquero())->solicitar(
+            [[0, 1, 0], [2, 0, 0], [3, 0, 2], [2, 1, 1], [0, 0, 2]],
+            [[7, 5, 3], [3, 2, 2], [9, 0, 2], [2, 2, 2], [4, 3, 3]],
+            [3, 3, 2], 1, [1, 0, 2]
+        );
+
+        $this->assertSame('concedida', $r['decision']);
+    }
+
+    public function test_solicitud_se_niega_si_el_estado_queda_inseguro(): void
+    {
+        // Ejemplo clásico: P0 pide (0,2,0) con disponible (2,3,0).
+        $r = (new Banquero())->solicitar(
+            [[0, 1, 0], [3, 0, 2], [3, 0, 2], [2, 1, 1], [0, 0, 2]],
+            [[7, 5, 3], [3, 2, 2], [9, 0, 2], [2, 2, 2], [4, 3, 3]],
+            [2, 3, 0], 0, [0, 2, 0]
+        );
+
+        $this->assertSame('negada', $r['decision']);
+    }
 }

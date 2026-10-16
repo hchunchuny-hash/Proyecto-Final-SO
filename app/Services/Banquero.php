@@ -66,6 +66,57 @@ class Banquero
         ];
     }
 
+    /**
+     * Evalúa si se puede conceder una solicitud de recursos de un proceso.
+     * 1) Si pide más de su necesidad: error.
+     * 2) Si pide más de lo disponible: el proceso espera.
+     * 3) Si no, se simula la asignación y se corre el banquero:
+     *    estado seguro => se concede; estado inseguro => se niega.
+     *
+     * @return array{decision: string, motivo: string, secuencia: array, pasos: array}
+     */
+    public function solicitar(array $asignacion, array $maximo, array $disponible, int $proceso, array $solicitud): array
+    {
+        $necesidad = $this->necesidad($maximo, $asignacion);
+        $nombre = 'P' . ($proceso + 1);
+
+        foreach ($solicitud as $j => $valor) {
+            if ($valor > $necesidad[$proceso][$j]) {
+                return $this->decision('error', "$nombre pide más de su necesidad en R" . ($j + 1) . '.');
+            }
+        }
+
+        foreach ($solicitud as $j => $valor) {
+            if ($valor > $disponible[$j]) {
+                return $this->decision('espera', "No hay suficiente R" . ($j + 1) . " disponible: $nombre debe esperar.");
+            }
+        }
+
+        // Simulación: Disponible -= Solicitud, Asignación += Solicitud (la Necesidad baja sola).
+        foreach ($solicitud as $j => $valor) {
+            $disponible[$j] -= $valor;
+            $asignacion[$proceso][$j] += $valor;
+        }
+
+        $resultado = $this->ejecutar($asignacion, $maximo, $disponible);
+
+        if ($resultado['seguro']) {
+            return $this->decision('concedida', 'El estado resultante es seguro: se concede la solicitud.', $resultado);
+        }
+
+        return $this->decision('negada', 'El estado resultante sería inseguro: se niega la solicitud.', $resultado);
+    }
+
+    private function decision(string $decision, string $motivo, array $resultado = []): array
+    {
+        return [
+            'decision'  => $decision,
+            'motivo'    => $motivo,
+            'secuencia' => $resultado['secuencia'] ?? [],
+            'pasos'     => $resultado['pasos'] ?? [],
+        ];
+    }
+
     /** Recorre los procesos buscando uno cuya necesidad quepa en lo disponible. */
     private function buscarSecuencia(array $asignacion, array $necesidad, array $disponible): array
     {
