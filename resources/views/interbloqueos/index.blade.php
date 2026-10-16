@@ -7,9 +7,9 @@
 <style>
   .m4{display:grid;gap:16px;grid-template-columns:minmax(0,2fr) minmax(260px,1fr)}
   @media (max-width:900px){.m4{grid-template-columns:1fr}}
-  .m4 .cab{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
-  .m4 .cab h2{margin:0}
-  .m4 .acciones{display:flex;flex-wrap:wrap;gap:8px}
+  .cab{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .cab h2{margin:0}
+  .acciones{display:flex;flex-wrap:wrap;gap:8px}
   .m4 .tabla th,.m4 .tabla td{text-align:center;padding:6px 4px}
   .m4 .tabla th.grupo{border-left:1px solid var(--borde)}
   .m4 .tabla td.sep{border-left:1px solid var(--borde)}
@@ -21,7 +21,7 @@
   .m4 .resultado.ok{border-color:var(--ok)}
   .m4 .resultado.mal{border-color:var(--error)}
   .m4 .secuencia{margin-top:8px;font:700 16px var(--mono)}
-  .m4 .nota{color:var(--suave);font-size:12px;margin:6px 0 0}
+  .nota{color:var(--suave);font-size:12px;margin:6px 0 0}
   .deteccion{margin-top:16px}
 </style>
 @endpush
