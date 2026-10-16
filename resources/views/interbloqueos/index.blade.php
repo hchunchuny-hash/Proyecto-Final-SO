@@ -34,6 +34,8 @@
                 <div class="acciones">
                     <button type="button" class="btn sec" id="btn-agregar">+ Agregar proceso</button>
                     <button type="button" class="btn sec" id="btn-quitar">− Quitar proceso</button>
+                    <button type="button" class="btn sec" id="btn-ej-seguro">Ejemplo seguro</button>
+                    <button type="button" class="btn sec" id="btn-ej-bloqueo">Ejemplo con interbloqueo</button>
                 </div>
             </div>
             <div class="caja-tabla">
@@ -237,6 +239,28 @@
         $('disponibles').append(tr);
     });
     BASE.forEach(([a, m]) => agregarFila(a, m));
+
+    const EJEMPLOS = {
+        seguro: { disponible: DISPONIBLE, procesos: BASE },
+        interbloqueo: {
+            disponible: [0, 0, 0],
+            procesos: [[[1, 0, 0], [1, 1, 0]], [[0, 1, 0], [1, 1, 0]], [[0, 0, 1], [0, 0, 1]]],
+        },
+    };
+
+    function cargarEjemplo(nombre) {
+        const e = EJEMPLOS[nombre];
+        filas.replaceChildren();
+        $('disponibles').querySelectorAll('input').forEach((i, j) => { i.value = e.disponible[j]; });
+        e.procesos.forEach(([a, m]) => agregarFila(a, m));
+        mostrarError('');
+        $('res-banquero').hidden = true;
+        $('res-detectar').hidden = true;
+        $('d-vacio').hidden = false;
+    }
+
+    $('btn-ej-seguro').addEventListener('click', () => cargarEjemplo('seguro'));
+    $('btn-ej-bloqueo').addEventListener('click', () => cargarEjemplo('interbloqueo'));
 </script>
 @endpush
 
