@@ -81,13 +81,20 @@ class Banquero
                     continue;
                 }
 
+                $antes = $trabajo;
                 foreach ($filaAsignada as $j => $valor) {
                     $trabajo[$j] += $valor;
                 }
                 $termino[$i] = true;
                 $secuencia[] = $i;
-                $pasos[] = ['proceso' => $i, 'trabajo' => $trabajo];
+                $pasos[] = [
+                    'proceso'       => $i,
+                    'necesidad'     => $necesidad[$i],
+                    'trabajo_antes' => $antes,
+                    'trabajo'       => $trabajo,
+                ];
                 $avanzo = true;
+                break; // al terminar un proceso se vuelve a empezar desde P1
             }
         } while ($avanzo);
 

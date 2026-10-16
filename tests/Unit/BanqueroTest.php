@@ -16,7 +16,21 @@ class BanqueroTest extends TestCase
         );
 
         $this->assertTrue($r['seguro']);
-        $this->assertSame([1, 3, 4, 0, 2], $r['secuencia']);
+        $this->assertSame([1, 3, 0, 2, 4], $r['secuencia']);
+    }
+
+    public function test_reinicia_desde_p1_y_detalla_los_pasos(): void
+    {
+        $r = (new Banquero())->ejecutar(
+            [[1, 0, 1], [2, 1, 0], [1, 1, 0]],
+            [[3, 2, 2], [3, 1, 1], [2, 2, 1]],
+            [2, 1, 1]
+        );
+
+        $this->assertSame([1, 0, 2], $r['secuencia']);
+        $this->assertSame([2, 1, 1], $r['pasos'][0]['trabajo_antes']);
+        $this->assertSame([4, 2, 1], $r['pasos'][0]['trabajo']);
+        $this->assertSame([1, 0, 1], $r['pasos'][0]['necesidad']);
     }
 
     public function test_calcula_la_necesidad(): void
