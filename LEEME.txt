@@ -1,0 +1,24 @@
+MÓDULO: M4 Interbloqueos
+Autor: Griselda Toma
+
+ARCHIVOS NUEVOS:
+- app/Http/Controllers/InterbloqueosController.php
+- app/Services/Banquero.php
+- resources/views/interbloqueos/index.blade.php
+- tests/Unit/BanqueroTest.php
+
+USE EN routes/web.php:
+use App\Http\Controllers\InterbloqueosController;
+
+BLOQUE DE RUTAS (dentro del grupo auth):
+    // ===== M4 Interbloqueos =====
+    Route::get('/interbloqueos', [InterbloqueosController::class, 'index'])->name('interbloqueos.index');
+    Route::post('/interbloqueos/banquero', [InterbloqueosController::class, 'banquero'])->name('interbloqueos.banquero');
+    Route::post('/interbloqueos/detectar', [InterbloqueosController::class, 'detectar'])->name('interbloqueos.detectar');
+    // ===== fin M4 =====
+
+MIGRACIONES: ninguna
+COMANDOS NUEVOS PARA EL COMMANDRUNNER: ninguno (M4 solo calcula con matrices)
+LIBRERÍAS EXTERNAS: ninguna
+
+DECLARACIÓN DE USO DE IA: el código se desarrolló con ayuda de Claude (Anthropic). La autora lo revisó, lo probó y puede explicarlo.
