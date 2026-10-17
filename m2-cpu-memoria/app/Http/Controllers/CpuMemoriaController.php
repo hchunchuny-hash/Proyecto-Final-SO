@@ -2,25 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\LectorProc;
-use Illuminate\Http\JsonResponse;
+use App\Services\MonitorCpuMemoria;
 
-class CpuMemoriaController extends Controller
+class MemoriaController extends Controller
 {
+    /** Pantalla del módulo: los datos que cambian se piden después por JSON. */
     public function index()
     {
-        return view('cpu-memoria');
+        return view('memoria.index', ['info' => MonitorCpuMemoria::info()]);
     }
 
-    public function datos(LectorProc $proc): JsonResponse
+    /** Datos actuales de CPU, memoria, carga y procesos, en JSON. */
+    public function datos()
     {
-        if (! $proc->disponible()) {
-            return response()->json(['message' => '/proc no está disponible (se requiere Linux).'], 503);
-        }
-
-        return response()->json([
-            'cpu' => $proc->cpu(),
-            'memoria' => $proc->memoria(),
-        ]);
+        return response()
+            ->json(MonitorCpuMemoria::instantanea())
+            ->header('Cache-Control', 'no-store');
     }
 }
