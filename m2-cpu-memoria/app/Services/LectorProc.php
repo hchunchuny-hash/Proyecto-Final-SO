@@ -3,7 +3,9 @@
 namespace App\Services;
 
 /**
- * Lee métricas reales del sistema desde /proc (solo Linux).
+ * M2 · Lee métricas reales del kernel desde /proc (solo lectura con
+ * file_get_contents, sin ejecutar comandos). El Top 5 de procesos usa
+ * CommandRunner::leer('procesos').
  */
 class LectorProc
 {
@@ -12,7 +14,7 @@ class LectorProc
         return is_readable('/proc/stat') && is_readable('/proc/meminfo');
     }
 
-    /** Uso de CPU total y por núcleo, midiendo dos muestras de /proc/stat. */
+    /** Uso de CPU total y por núcleo: dos lecturas de /proc/stat separadas por unos ms. */
     public function cpu(int $muestraMs = 200): array
     {
         $a = $this->leerStat();
@@ -44,6 +46,41 @@ class LectorProc
         ];
     }
 
+    /** Modelo del procesador desde /proc/cpuinfo. */
+    public function modelo(): string
+    {
+        $txt = @file_get_contents('/proc/cpuinfo') ?: '';
+
+        foreach (['model name', 'Model', 'Hardware'] as $campo) {
+            if (preg_match('/^'.preg_quote($campo, '/').'\s*:\s*(.+)$/mi', $txt, $m)) {
+                return trim($m[1]);
+            }
+        }
+
+        return 'Desconocido';
+    }
+
+    /** Segundos encendido, desde /proc/uptime. */
+    public function uptime(): int
+    {
+        $txt = trim((string) @file_get_contents('/proc/uptime'));
+
+        return (int) (explode(' ', $txt)[0] ?? 0);
+    }
+
+    /** Carga promedio de 1, 5 y 15 minutos, desde /proc/loadavg. */
+    public function carga(): array
+    {
+        $p = preg_split('/\s+/', trim((string) @file_get_contents('/proc/loadavg')));
+
+        return [
+            'm1' => (float) ($p[0] ?? 0),
+            'm5' => (float) ($p[1] ?? 0),
+            'm15' => (float) ($p[2] ?? 0),
+        ];
+    }
+
+    /** Memoria y swap desde /proc/meminfo (valores en GB y porcentajes). */
     public function memoria(): array
     {
         $info = [];
@@ -55,8 +92,11 @@ class LectorProc
 
         $total = $info['MemTotal'] ?? 0;
         $libre = $info['MemFree'] ?? 0;
+        $disponible = $info['MemAvailable'] ?? $libre;
+        $usada = max(0, $total - $disponible);
         $cache = ($info['Buffers'] ?? 0) + ($info['Cached'] ?? 0) + ($info['SReclaimable'] ?? 0);
-        $usada = max(0, $total - $libre - $cache);
+        $cache = max(0, min($cache, $total - $usada));
+        $libre = max(0, $total - $usada - $cache);
         $swapTotal = $info['SwapTotal'] ?? 0;
         $swapUsada = max(0, $swapTotal - ($info['SwapFree'] ?? 0));
 
@@ -69,9 +109,63 @@ class LectorProc
             'cache_gb' => $gb($cache),
             'libre_gb' => $gb($libre),
             'usada_pct' => $pct($usada, $total),
-            'cache_pct' => $pct($cache, $total),
-            'libre_pct' => $pct($libre, $total),
+            'swap_total_gb' => $gb($swapTotal),
+            'swap_usada_gb' => $gb($swapUsada),
             'swap_pct' => $pct($swapUsada, $swapTotal),
+        ];
+    }
+
+    /** Top N de procesos por CPU y por memoria (usa la lista blanca del CommandRunner). */
+    public function top(int $n = 5): array
+    {
+        $r = CommandRunner::leer('procesos');
+
+        if (! $r['ok']) {
+            return ['cpu' => [], 'memoria' => []];
+        }
+
+        return self::topDe(self::parsearProcesos($r['salida']), $n);
+    }
+
+    /** Convierte la salida de `ps -eo pid,ppid,user,stat,ni,pcpu,pmem,comm` en filas. */
+    public static function parsearProcesos(string $salida): array
+    {
+        $filas = [];
+
+        foreach (preg_split('/\r?\n/', trim($salida)) as $linea) {
+            $p = preg_split('/\s+/', trim($linea), 8);
+            if (count($p) < 8 || ! ctype_digit($p[0])) {
+                continue;
+            }
+
+            [$pid, , $usuario, $estado, , $cpu, $mem, $comando] = $p;
+            $filas[] = [
+                'pid' => (int) $pid,
+                'usuario' => $usuario,
+                'estado' => $estado,
+                'cpu' => (float) $cpu,
+                'mem' => (float) $mem,
+                'comando' => $comando,
+            ];
+        }
+
+        return $filas;
+    }
+
+    /** Ordena y recorta: el propio `ps` que lanza la aplicación no cuenta. */
+    public static function topDe(array $procesos, int $n = 5): array
+    {
+        $procesos = array_values(array_filter($procesos, fn ($p) => $p['comando'] !== 'ps'));
+
+        $porCpu = $procesos;
+        usort($porCpu, fn ($a, $b) => [$b['cpu'], $a['pid']] <=> [$a['cpu'], $b['pid']]);
+
+        $porMem = $procesos;
+        usort($porMem, fn ($a, $b) => [$b['mem'], $a['pid']] <=> [$a['mem'], $b['pid']]);
+
+        return [
+            'cpu' => array_slice($porCpu, 0, $n),
+            'memoria' => array_slice($porMem, 0, $n),
         ];
     }
 
@@ -98,6 +192,6 @@ class LectorProc
     {
         $txt = @file_get_contents('/proc/cpuinfo') ?: '';
 
-        return preg_match_all('/^processor\s*:/m', $txt);
+        return (int) preg_match_all('/^processor\s*:/m', $txt);
     }
 }
