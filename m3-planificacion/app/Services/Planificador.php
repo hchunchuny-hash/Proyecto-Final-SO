@@ -5,14 +5,58 @@ namespace App\Services;
 use InvalidArgumentException;
 
 /**
- * Simulador de algoritmos de planificación de CPU.
+ * M3 · Simulador de planificación de CPU (se calcula en PHP, no lee el sistema real).
  *
- * Algoritmos: FCFS, SJF (no expulsivo), PRIORIDAD (no expulsivo,
- * número menor = mayor prioridad) y RR (Round Robin).
+ * Algoritmos: FCFS, SJF (no expropiativo), SRTF (expropiativo), RR (Round Robin)
+ * y PRIORIDAD (no expropiativo, número menor = mayor prioridad).
  */
 class Planificador
 {
+    public const NOMBRES = [
+        'FCFS' => 'FCFS',
+        'SJF' => 'SJF (no expropiativo)',
+        'SRTF' => 'SRTF',
+        'RR' => 'Round Robin',
+        'PRIORIDAD' => 'Prioridades',
+    ];
+
     public function simular(string $algoritmo, array $procesos, int $quantum = 4): array
+    {
+        $procs = $this->normalizar($procesos);
+        $algoritmo = strtoupper($algoritmo);
+
+        $crudos = match ($algoritmo) {
+            'RR' => $this->roundRobin($procs, max(1, $quantum)),
+            'SRTF' => $this->srtf($procs),
+            'FCFS' => $this->noExpulsivo($procs, fn ($a, $b) => [$a['llegada'], $a['idx']] <=> [$b['llegada'], $b['idx']]),
+            'SJF' => $this->noExpulsivo($procs, fn ($a, $b) => [$a['rafaga'], $a['llegada'], $a['idx']] <=> [$b['rafaga'], $b['llegada'], $b['idx']]),
+            'PRIORIDAD' => $this->noExpulsivo($procs, fn ($a, $b) => [$a['prioridad'], $a['llegada'], $a['idx']] <=> [$b['prioridad'], $b['llegada'], $b['idx']]),
+            default => throw new InvalidArgumentException("Algoritmo no soportado: {$algoritmo}"),
+        };
+
+        return $this->metricas($procs, $this->unirContiguos($crudos));
+    }
+
+    /** Ejecuta todos los algoritmos con los mismos procesos para la tabla comparativa. */
+    public function comparar(array $procesos, int $quantum = 4): array
+    {
+        $filas = [];
+        foreach (self::NOMBRES as $codigo => $nombre) {
+            $r = $this->simular($codigo, $procesos, $quantum);
+            $filas[] = [
+                'algoritmo' => $codigo,
+                'nombre' => $nombre,
+                'espera_promedio' => $r['espera_promedio'],
+                'retorno_promedio' => $r['retorno_promedio'],
+                'cambios_contexto' => $r['cambios_contexto'],
+                'tiempo_total' => $r['tiempo_total'],
+            ];
+        }
+
+        return $filas;
+    }
+
+    private function normalizar(array $procesos): array
     {
         $procs = [];
         foreach (array_values($procesos) as $i => $p) {
@@ -29,17 +73,7 @@ class Planificador
             throw new InvalidArgumentException('Se requiere al menos un proceso.');
         }
 
-        $crudos = match (strtoupper($algoritmo)) {
-            'RR' => $this->roundRobin($procs, max(1, $quantum)),
-            'FCFS' => $this->noExpulsivo($procs, fn ($a, $b) => [$a['llegada'], $a['idx']] <=> [$b['llegada'], $b['idx']]),
-            'SJF' => $this->noExpulsivo($procs, fn ($a, $b) => [$a['rafaga'], $a['llegada'], $a['idx']] <=> [$b['rafaga'], $b['llegada'], $b['idx']]),
-            'PRIORIDAD' => $this->noExpulsivo($procs, fn ($a, $b) => [$a['prioridad'], $a['llegada'], $a['idx']] <=> [$b['prioridad'], $b['llegada'], $b['idx']]),
-            default => throw new InvalidArgumentException("Algoritmo no soportado: {$algoritmo}"),
-        };
-
-        $segmentos = $this->unirContiguos($crudos);
-
-        return $this->metricas($procs, $segmentos);
+        return $procs;
     }
 
     /** FCFS / SJF / Prioridad: elige entre los procesos listos con el comparador dado. */
@@ -66,6 +100,49 @@ class Planificador
             $t += $p['rafaga'];
 
             $pendientes = array_values(array_filter($pendientes, fn ($q) => $q['idx'] !== $p['idx']));
+        }
+
+        return $segmentos;
+    }
+
+    /** SRTF: en cada unidad de tiempo corre el listo con menos tiempo restante. */
+    private function srtf(array $procs): array
+    {
+        $restante = [];
+        foreach ($procs as $p) {
+            $restante[$p['idx']] = $p['rafaga'];
+        }
+
+        $t = 0;
+        $actual = null;
+        $segmentos = [];
+
+        while (array_sum($restante) > 0) {
+            $listos = array_values(array_filter($procs, fn ($p) => $p['llegada'] <= $t && $restante[$p['idx']] > 0));
+
+            if (! $listos) {
+                $proximo = min(array_map(
+                    fn ($p) => $p['llegada'],
+                    array_filter($procs, fn ($p) => $restante[$p['idx']] > 0)
+                ));
+                $segmentos[] = ['pid' => null, 'inicio' => $t, 'fin' => $proximo];
+                $t = $proximo;
+                $actual = null;
+                continue;
+            }
+
+            // En un empate se prefiere seguir con el proceso que ya está en la CPU.
+            usort($listos, fn ($a, $b) => [
+                $restante[$a['idx']], $a['idx'] === $actual ? 0 : 1, $a['llegada'], $a['idx'],
+            ] <=> [
+                $restante[$b['idx']], $b['idx'] === $actual ? 0 : 1, $b['llegada'], $b['idx'],
+            ]);
+            $p = $listos[0];
+
+            $segmentos[] = ['pid' => $p['pid'], 'inicio' => $t, 'fin' => $t + 1];
+            $restante[$p['idx']]--;
+            $actual = $p['idx'];
+            $t++;
         }
 
         return $segmentos;
