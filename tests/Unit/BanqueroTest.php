@@ -96,4 +96,33 @@ class BanqueroTest extends TestCase
 
         $this->assertSame('negada', $r['decision']);
     }
+
+    public function test_grafo_detecta_un_ciclo(): void
+    {
+        $g = (new Banquero())->grafo([[1, 0], [0, 1]], [[1, 1], [1, 1]], [0, 0]);
+
+        $this->assertTrue($g['hayCiclo']);
+        $this->assertSame([0, 3, 1, 2], $g['ciclo']);
+        $this->assertSame(4, count($g['aristas']));
+    }
+
+    public function test_grafo_sin_ciclos(): void
+    {
+        $g = (new Banquero())->grafo(
+            [[1, 0, 1], [2, 1, 0], [1, 1, 0]],
+            [[3, 2, 2], [3, 1, 1], [2, 2, 1]],
+            [2, 1, 1]
+        );
+
+        $this->assertFalse($g['hayCiclo']);
+        $this->assertNull($g['sugerencia']);
+    }
+
+    public function test_grafo_sugiere_como_recuperarse(): void
+    {
+        $g = (new Banquero())->grafo([[1, 0], [0, 1]], [[1, 1], [1, 1]], [0, 0]);
+
+        $this->assertSame(0, $g['sugerencia']['terminar']['proceso']);
+        $this->assertSame(['proceso' => 1, 'recurso' => 1, 'cantidad' => 1], $g['sugerencia']['apropiar']);
+    }
 }

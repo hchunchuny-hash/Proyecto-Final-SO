@@ -46,6 +46,22 @@ class InterbloqueosController extends Controller
         return response()->json($resultado);
     }
 
+    public function grafo(Request $request, Banquero $banquero): JsonResponse
+    {
+        [$asignacion, $maximo, $disponible] = $this->datos($request);
+
+        $resultado = $banquero->grafo($asignacion, $maximo, $disponible);
+
+        RegistroBitacora::registrar(
+            'Grafo de asignación de recursos',
+            count($asignacion) . ' procesos',
+            RegistroBitacora::EXITO,
+            $resultado['hayCiclo'] ? 'Ciclo detectado' : 'Sin ciclos'
+        );
+
+        return response()->json($resultado);
+    }
+
     public function solicitud(Request $request, Banquero $banquero): JsonResponse
     {
         [$asignacion, $maximo, $disponible] = $this->datos($request);

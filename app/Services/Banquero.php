@@ -117,6 +117,121 @@ class Banquero
         ];
     }
 
+    /**
+     * Grafo de asignación de recursos (procesos = círculos, recursos = cuadrados).
+     * - Arista de asignación R -> P: el recurso tiene instancias asignadas al proceso.
+     * - Arista de solicitud P -> R: el proceso necesita más de lo que hay disponible, así que espera.
+     * Los ciclos se buscan con DFS. Los nodos 0..n-1 son procesos y n..n+m-1 son recursos.
+     *
+     * @return array{procesos: int, recursos: int, aristas: array, hayCiclo: bool, ciclo: array, sugerencia: ?array}
+     */
+    public function grafo(array $asignacion, array $maximo, array $disponible): array
+    {
+        $necesidad = $this->necesidad($maximo, $asignacion);
+        $n = count($asignacion);
+        $m = count($disponible);
+
+        $aristas = [];
+        $siguientes = [];
+        for ($i = 0; $i < $n; $i++) {
+            for ($j = 0; $j < $m; $j++) {
+                if ($asignacion[$i][$j] > 0) {
+                    $aristas[] = ['tipo' => 'asignacion', 'de' => $n + $j, 'a' => $i, 'cantidad' => $asignacion[$i][$j]];
+                    $siguientes[$n + $j][] = $i;
+                }
+                if ($necesidad[$i][$j] > $disponible[$j]) {
+                    $aristas[] = ['tipo' => 'solicitud', 'de' => $i, 'a' => $n + $j, 'cantidad' => $necesidad[$i][$j]];
+                    $siguientes[$i][] = $n + $j;
+                }
+            }
+        }
+
+        $ciclo = $this->buscarCiclo($siguientes, $n + $m);
+
+        return [
+            'procesos'   => $n,
+            'recursos'   => $m,
+            'aristas'    => $aristas,
+            'hayCiclo'   => $ciclo !== [],
+            'ciclo'      => $ciclo,
+            'sugerencia' => $ciclo !== [] ? $this->sugerencia($ciclo, $asignacion, $n) : null,
+        ];
+    }
+
+    /** Búsqueda en profundidad (DFS): devuelve los nodos de un ciclo, o [] si no hay. */
+    private function buscarCiclo(array $siguientes, int $total): array
+    {
+        $estado = array_fill(0, $total, 0); // 0 sin visitar, 1 en el camino, 2 terminado
+        $camino = [];
+
+        $visitar = function (int $nodo) use (&$visitar, &$estado, &$camino, $siguientes): array {
+            $estado[$nodo] = 1;
+            $camino[] = $nodo;
+
+            foreach ($siguientes[$nodo] ?? [] as $vecino) {
+                if ($estado[$vecino] === 1) {
+                    return array_slice($camino, array_search($vecino, $camino, true));
+                }
+                if ($estado[$vecino] === 0) {
+                    $ciclo = $visitar($vecino);
+                    if ($ciclo !== []) {
+                        return $ciclo;
+                    }
+                }
+            }
+
+            array_pop($camino);
+            $estado[$nodo] = 2;
+
+            return [];
+        };
+
+        for ($nodo = 0; $nodo < $total; $nodo++) {
+            if ($estado[$nodo] === 0) {
+                $ciclo = $visitar($nodo);
+                if ($ciclo !== []) {
+                    return $ciclo;
+                }
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Recuperación: terminar el proceso del ciclo con menos recursos asignados
+     * o apropiarle (quitarle) las instancias de un recurso que otro proceso del ciclo espera.
+     */
+    private function sugerencia(array $ciclo, array $asignacion, int $n): array
+    {
+        $procesos = array_values(array_filter($ciclo, fn ($nodo) => $nodo < $n));
+
+        $victima = $procesos[0];
+        foreach ($procesos as $p) {
+            if (array_sum($asignacion[$p]) < array_sum($asignacion[$victima])) {
+                $victima = $p;
+            }
+        }
+
+        $apropiar = null;
+        $total = count($ciclo);
+        for ($k = 0; $k < $total; $k++) {
+            $de = $ciclo[$k];
+            $a = $ciclo[($k + 1) % $total];
+            if ($de >= $n && $a < $n) {
+                $cantidad = $asignacion[$a][$de - $n];
+                if ($apropiar === null || $cantidad < $apropiar['cantidad']) {
+                    $apropiar = ['proceso' => $a, 'recurso' => $de - $n, 'cantidad' => $cantidad];
+                }
+            }
+        }
+
+        return [
+            'terminar' => ['proceso' => $victima, 'liberaria' => $asignacion[$victima]],
+            'apropiar' => $apropiar,
+        ];
+    }
+
     /** Recorre los procesos buscando uno cuya necesidad quepa en lo disponible. */
     private function buscarSecuencia(array $asignacion, array $necesidad, array $disponible): array
     {
