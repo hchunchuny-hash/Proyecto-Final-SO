@@ -23,6 +23,8 @@
   .secuencia{margin-top:8px;font:700 16px var(--mono)}
   .nota{color:var(--suave);font-size:12px;margin:6px 0 0}
   .seccion{margin-top:16px}
+  #sol-proceso{background:var(--fondo);color:var(--texto);border:1px solid var(--borde);border-radius:var(--radio);padding:5px 8px;font:13px var(--mono)}
+  .campos-sol{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:13px var(--mono);color:var(--suave)}
 </style>
 @endpush
 
@@ -84,6 +86,23 @@
     </section>
 
     <section class="tarjeta seccion">
+        <h2>Solicitud de recursos</h2>
+        <p class="nota">Elige un proceso y cuánto pide de cada recurso. Se simula la asignación y se corre el banquero para decidir si se concede.</p>
+        <div class="campos-sol">
+            <label for="sol-proceso">Proceso</label>
+            <select id="sol-proceso"></select>
+            <span class="campos-sol" id="sol-campos"></span>
+            <button type="button" class="btn sec" id="btn-solicitar">Evaluar solicitud</button>
+        </div>
+        <div class="error msg" id="error-sol" role="alert"></div>
+        <div class="resultado" id="res-solicitud" hidden>
+            Decisión: <span class="insignia" id="s-estado"></span>
+            <p class="nota" id="s-motivo"></p>
+            <div class="secuencia" id="s-secuencia"></div>
+        </div>
+    </section>
+
+    <section class="tarjeta seccion">
         <div class="cab">
             <h2>Detección de interbloqueos</h2>
             <button type="button" class="btn sec" id="btn-detectar">⚠ Detectar interbloqueo</button>
@@ -101,6 +120,7 @@
 <script>
     const URL_BANQUERO = "{{ route('interbloqueos.banquero') }}";
     const URL_DETECTAR = "{{ route('interbloqueos.detectar') }}";
+    const URL_SOLICITUD = "{{ route('interbloqueos.solicitud') }}";
     const TOKEN = document.querySelector('meta[name="csrf-token"]').content;
     const MAX_PROCESOS = 10;
     const MAX_RECURSOS = 6;
@@ -186,6 +206,7 @@
         $('res-detectar').hidden = true;
         $('d-vacio').hidden = false;
         $('sec-pasos').hidden = true;
+        $('res-solicitud').hidden = true;
     }
 
     function dibujar(asignacion, maximo, disponible) {
@@ -196,7 +217,17 @@
         $('disponibles').replaceChildren();
         disponible.forEach((v, j) => filaDisponible(j, v));
         recalcular();
+        actualizarSolicitud();
         limpiarResultados();
+    }
+
+    function actualizarSolicitud() {
+        const lista = $('sol-proceso');
+        lista.replaceChildren();
+        for (let i = 0; i < filas.children.length; i++) lista.append(new Option('P' + (i + 1), i));
+        const campos = $('sol-campos');
+        campos.replaceChildren();
+        for (let j = 0; j < recursos; j++) campos.append(crear('span', 'R' + (j + 1)), entrada(0));
     }
 
     function leerFila(tr) {
@@ -310,6 +341,31 @@
         $('d-detalle').textContent = r.interbloqueo
             ? 'Procesos bloqueados: ' + r.bloqueados.map((i) => 'P' + (i + 1)).join(', ') + '.'
             : 'El sistema no presenta interbloqueos en este momento.';
+    });
+
+    $('btn-solicitar').addEventListener('click', async () => {
+        const datos = leerDatos();
+        datos.proceso = parseInt($('sol-proceso').value, 10);
+        datos.solicitud = Array.from($('sol-campos').querySelectorAll('input'), numero);
+        if (datos.solicitud.some(Number.isNaN)) {
+            mostrarError('Completa la solicitud con números enteros.', 'error-sol');
+            return;
+        }
+        const r = await enviar(URL_SOLICITUD, datos, 'error-sol');
+        if (!r) return;
+        const textos = {
+            concedida: ['SOLICITUD CONCEDIDA', 'ok', 'ok'],
+            negada: ['SOLICITUD NEGADA', 'error', 'mal'],
+            espera: ['EL PROCESO DEBE ESPERAR', 'aviso', ''],
+            error: ['SOLICITUD INVÁLIDA', 'error', 'mal'],
+        };
+        const [texto, clase, borde] = textos[r.decision];
+        const caja = $('res-solicitud');
+        caja.hidden = false;
+        caja.className = 'resultado ' + borde;
+        ponerEstado($('s-estado'), texto, clase);
+        $('s-motivo').textContent = r.motivo;
+        $('s-secuencia').textContent = r.secuencia.length ? 'Secuencia segura: ' + nombres(r.secuencia) : '';
     });
 
     $('btn-agregar').addEventListener('click', () => {
