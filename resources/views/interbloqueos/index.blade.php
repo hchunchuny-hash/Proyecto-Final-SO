@@ -10,19 +10,19 @@
   .cab{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
   .cab h2{margin:0}
   .acciones{display:flex;flex-wrap:wrap;gap:8px}
-  .m4 .tabla th,.m4 .tabla td{text-align:center;padding:6px 4px}
-  .m4 .tabla th.grupo{border-left:1px solid var(--borde)}
-  .m4 .tabla td.sep{border-left:1px solid var(--borde)}
-  .m4 input.cel{width:52px;padding:5px 4px;text-align:center;background:var(--fondo);color:var(--texto);border:1px solid var(--borde);border-radius:var(--radio);font:13px var(--mono)}
-  .m4 input.cel:focus-visible{outline:2px solid var(--acento);outline-offset:1px}
-  .m4 .necesidad{font-family:var(--mono);color:var(--suave)}
-  .m4 .necesidad.neg{color:var(--error)}
-  .m4 .resultado{margin-top:16px;padding:12px 14px;border:1px solid var(--borde);border-radius:var(--radio)}
-  .m4 .resultado.ok{border-color:var(--ok)}
-  .m4 .resultado.mal{border-color:var(--error)}
-  .m4 .secuencia{margin-top:8px;font:700 16px var(--mono)}
+  .tarjeta .tabla th,.tarjeta .tabla td{text-align:center;padding:6px 4px}
+  .tabla th.grupo{border-left:1px solid var(--borde)}
+  .tabla td.sep{border-left:1px solid var(--borde)}
+  input.cel{width:52px;padding:5px 4px;text-align:center;background:var(--fondo);color:var(--texto);border:1px solid var(--borde);border-radius:var(--radio);font:13px var(--mono)}
+  input.cel:focus-visible{outline:2px solid var(--acento);outline-offset:1px}
+  .necesidad{font-family:var(--mono);color:var(--suave)}
+  .necesidad.neg{color:var(--error)}
+  .resultado{margin-top:16px;padding:12px 14px;border:1px solid var(--borde);border-radius:var(--radio)}
+  .resultado.ok{border-color:var(--ok)}
+  .resultado.mal{border-color:var(--error)}
+  .secuencia{margin-top:8px;font:700 16px var(--mono)}
   .nota{color:var(--suave);font-size:12px;margin:6px 0 0}
-  .deteccion{margin-top:16px}
+  .seccion{margin-top:16px}
 </style>
 @endpush
 
@@ -32,8 +32,10 @@
             <div class="cab">
                 <h2>Recursos y procesos</h2>
                 <div class="acciones">
-                    <button type="button" class="btn sec" id="btn-agregar">+ Agregar proceso</button>
-                    <button type="button" class="btn sec" id="btn-quitar">− Quitar proceso</button>
+                    <button type="button" class="btn sec" id="btn-agregar">+ Proceso</button>
+                    <button type="button" class="btn sec" id="btn-quitar">− Proceso</button>
+                    <button type="button" class="btn sec" id="btn-mas-recurso">+ Recurso</button>
+                    <button type="button" class="btn sec" id="btn-menos-recurso">− Recurso</button>
                     <button type="button" class="btn sec" id="btn-ej-seguro">Ejemplo seguro</button>
                     <button type="button" class="btn sec" id="btn-ej-bloqueo">Ejemplo con interbloqueo</button>
                 </div>
@@ -41,23 +43,14 @@
             <div class="caja-tabla">
                 <table class="tabla">
                     <thead>
-                        <tr>
-                            <th rowspan="2">Proceso</th>
-                            <th colspan="3" class="grupo">Asignación</th>
-                            <th colspan="3" class="grupo">Máximo</th>
-                            <th colspan="3" class="grupo">Necesidad</th>
-                        </tr>
-                        <tr>
-                            <th class="grupo">R1</th><th>R2</th><th>R3</th>
-                            <th class="grupo">R1</th><th>R2</th><th>R3</th>
-                            <th class="grupo">R1</th><th>R2</th><th>R3</th>
-                        </tr>
+                        <tr id="cab-grupos"></tr>
+                        <tr id="cab-recursos"></tr>
                     </thead>
                     <tbody id="filas"></tbody>
                 </table>
             </div>
-            <p class="nota">Necesidad = Máximo − Asignación (se calcula sola).</p>
-            <div class="error" id="error" role="alert"></div>
+            <p class="nota">Necesidad = Máximo − Asignación (se calcula sola). Hasta 10 procesos y 6 recursos.</p>
+            <div class="error msg" id="error" role="alert"></div>
         </section>
 
         <section class="tarjeta">
@@ -79,11 +72,12 @@
         </section>
     </div>
 
-    <section class="tarjeta deteccion">
+    <section class="tarjeta seccion">
         <div class="cab">
             <h2>Detección de interbloqueos</h2>
             <button type="button" class="btn sec" id="btn-detectar">⚠ Detectar interbloqueo</button>
         </div>
+        <div class="error msg" id="error-det" role="alert"></div>
         <div class="vacio" id="d-vacio">Pulsa «Detectar interbloqueo» para analizar el estado actual.</div>
         <div id="res-detectar" hidden>
             Estado: <span class="insignia" id="d-estado"></span>
@@ -97,49 +91,111 @@
     const URL_BANQUERO = "{{ route('interbloqueos.banquero') }}";
     const URL_DETECTAR = "{{ route('interbloqueos.detectar') }}";
     const TOKEN = document.querySelector('meta[name="csrf-token"]').content;
-    const RECURSOS = 3;
-    const BASE = [[[1, 0, 1], [3, 2, 2]], [[2, 1, 0], [3, 1, 1]], [[1, 1, 0], [2, 2, 1]]];
-    const DISPONIBLE = [2, 1, 1];
+    const MAX_PROCESOS = 10;
+    const MAX_RECURSOS = 6;
+    const EJEMPLOS = {
+        seguro: {
+            disponible: [2, 1, 1],
+            procesos: [[[1, 0, 1], [3, 2, 2]], [[2, 1, 0], [3, 1, 1]], [[1, 1, 0], [2, 2, 1]]],
+        },
+        interbloqueo: {
+            disponible: [0, 0, 0],
+            procesos: [[[1, 0, 0], [1, 1, 0]], [[0, 1, 0], [1, 1, 0]], [[0, 0, 1], [0, 0, 1]]],
+        },
+    };
 
     const $ = (id) => document.getElementById(id);
     const filas = $('filas');
+    let recursos = 0;
+
+    function crear(etiqueta, texto, clase) {
+        const e = document.createElement(etiqueta);
+        if (texto !== undefined) e.textContent = texto;
+        if (clase) e.className = clase;
+        return e;
+    }
 
     function entrada(valor) {
-        const i = document.createElement('input');
-        i.type = 'number'; i.min = 0; i.max = 99; i.value = valor; i.className = 'cel';
+        const i = crear('input', undefined, 'cel');
+        i.type = 'number'; i.min = 0; i.max = 99;
+        i.value = Number.isNaN(valor) ? '' : valor;
         i.setAttribute('aria-label', 'cantidad');
         i.addEventListener('input', recalcular);
         return i;
     }
 
     function celda(contenido, clase) {
-        const td = document.createElement('td');
-        if (clase) td.className = clase;
+        const td = crear('td', undefined, clase);
         td.append(contenido);
         return td;
     }
 
+    function numero(i) {
+        return i.value === '' ? NaN : parseInt(i.value, 10);
+    }
+
+    function encabezado() {
+        const grupos = $('cab-grupos');
+        const nombres = $('cab-recursos');
+        grupos.replaceChildren();
+        nombres.replaceChildren();
+        const proceso = crear('th', 'Proceso');
+        proceso.rowSpan = 2;
+        grupos.append(proceso);
+        ['Asignación', 'Máximo', 'Necesidad'].forEach((titulo) => {
+            const th = crear('th', titulo, 'grupo');
+            th.colSpan = recursos;
+            grupos.append(th);
+            for (let j = 0; j < recursos; j++) nombres.append(crear('th', 'R' + (j + 1), j === 0 ? 'grupo' : ''));
+        });
+    }
+
     function agregarFila(asignacion, maximo) {
-        const tr = document.createElement('tr');
+        const tr = crear('tr');
         tr.append(celda('P' + (filas.children.length + 1)));
-        for (let j = 0; j < RECURSOS; j++) tr.append(celda(entrada(asignacion[j]), j === 0 ? 'sep' : ''));
-        for (let j = 0; j < RECURSOS; j++) tr.append(celda(entrada(maximo[j]), j === 0 ? 'sep' : ''));
-        for (let j = 0; j < RECURSOS; j++) tr.append(celda('0', 'necesidad ' + (j === 0 ? 'sep' : '')));
+        for (let j = 0; j < recursos; j++) tr.append(celda(entrada(asignacion[j]), j === 0 ? 'sep' : ''));
+        for (let j = 0; j < recursos; j++) tr.append(celda(entrada(maximo[j]), j === 0 ? 'sep' : ''));
+        for (let j = 0; j < recursos; j++) tr.append(celda('0', 'necesidad' + (j === 0 ? ' sep' : '')));
         filas.append(tr);
+    }
+
+    function filaDisponible(j, valor) {
+        const tr = crear('tr');
+        tr.append(celda('R' + (j + 1)), celda(entrada(valor)));
+        $('disponibles').append(tr);
+    }
+
+    function mostrarError(texto, id = 'error') {
+        $(id).textContent = texto || '';
+    }
+
+    function limpiarResultados() {
+        document.querySelectorAll('.msg').forEach((e) => { e.textContent = ''; });
+        $('res-banquero').hidden = true;
+        $('res-detectar').hidden = true;
+        $('d-vacio').hidden = false;
+    }
+
+    function dibujar(asignacion, maximo, disponible) {
+        recursos = disponible.length;
+        encabezado();
+        filas.replaceChildren();
+        asignacion.forEach((a, i) => agregarFila(a, maximo[i]));
+        $('disponibles').replaceChildren();
+        disponible.forEach((v, j) => filaDisponible(j, v));
         recalcular();
+        limpiarResultados();
     }
 
     function leerFila(tr) {
-        const entradas = tr.querySelectorAll('input');
-        const valores = Array.from(entradas, (i) => (i.value === '' ? NaN : parseInt(i.value, 10)));
-        return { asignacion: valores.slice(0, RECURSOS), maximo: valores.slice(RECURSOS) };
+        const valores = Array.from(tr.querySelectorAll('input'), numero);
+        return { asignacion: valores.slice(0, recursos), maximo: valores.slice(recursos) };
     }
 
     function recalcular() {
         filas.querySelectorAll('tr').forEach((tr) => {
             const { asignacion, maximo } = leerFila(tr);
-            const celdas = tr.querySelectorAll('td.necesidad');
-            celdas.forEach((td, j) => {
+            tr.querySelectorAll('td.necesidad').forEach((td, j) => {
                 const n = maximo[j] - asignacion[j];
                 td.textContent = Number.isNaN(n) ? '–' : n;
                 td.classList.toggle('neg', n < 0);
@@ -155,7 +211,7 @@
             asignacion.push(f.asignacion);
             maximo.push(f.maximo);
         });
-        const disponible = Array.from($('disponibles').querySelectorAll('input'), (i) => (i.value === '' ? NaN : parseInt(i.value, 10)));
+        const disponible = Array.from($('disponibles').querySelectorAll('input'), numero);
         return { asignacion, maximo, disponible };
     }
 
@@ -163,15 +219,11 @@
         return indices.map((i) => 'P' + (i + 1)).join(' → ');
     }
 
-    function mostrarError(texto) {
-        $('error').textContent = texto || '';
-    }
-
-    async function enviar(url, datos) {
-        mostrarError('');
+    async function enviar(url, datos, idError = 'error') {
+        mostrarError('', idError);
         const hayVacios = [...datos.asignacion.flat(), ...datos.maximo.flat(), ...datos.disponible].some(Number.isNaN);
         if (hayVacios) {
-            mostrarError('Completa todas las celdas con números enteros.');
+            mostrarError('Completa todas las celdas con números enteros.', idError);
             return null;
         }
         try {
@@ -183,12 +235,12 @@
             const json = await r.json();
             if (!r.ok) {
                 const primero = json.errors ? Object.values(json.errors)[0][0] : null;
-                mostrarError(primero || json.message || 'No se pudo procesar la solicitud.');
+                mostrarError(primero || json.message || 'No se pudo procesar la solicitud.', idError);
                 return null;
             }
             return json;
         } catch (e) {
-            mostrarError('Error de conexión con el servidor.');
+            mostrarError('Error de conexión con el servidor.', idError);
             return null;
         }
     }
@@ -211,7 +263,7 @@
     });
 
     $('btn-detectar').addEventListener('click', async () => {
-        const r = await enviar(URL_DETECTAR, leerDatos());
+        const r = await enviar(URL_DETECTAR, leerDatos(), 'error-det');
         if (!r) return;
         $('d-vacio').hidden = true;
         $('res-detectar').hidden = false;
@@ -222,45 +274,47 @@
     });
 
     $('btn-agregar').addEventListener('click', () => {
-        if (filas.children.length >= 10) { mostrarError('El máximo es de 10 procesos.'); return; }
-        mostrarError('');
-        agregarFila([0, 0, 0], [0, 0, 0]);
+        if (filas.children.length >= MAX_PROCESOS) { mostrarError('El máximo es de ' + MAX_PROCESOS + ' procesos.'); return; }
+        const d = leerDatos();
+        d.asignacion.push(new Array(recursos).fill(0));
+        d.maximo.push(new Array(recursos).fill(0));
+        dibujar(d.asignacion, d.maximo, d.disponible);
     });
 
     $('btn-quitar').addEventListener('click', () => {
         if (filas.children.length <= 1) { mostrarError('Debe quedar al menos un proceso.'); return; }
-        mostrarError('');
-        filas.lastElementChild.remove();
+        const d = leerDatos();
+        d.asignacion.pop();
+        d.maximo.pop();
+        dibujar(d.asignacion, d.maximo, d.disponible);
     });
 
-    DISPONIBLE.forEach((valor, j) => {
-        const tr = document.createElement('tr');
-        tr.append(celda('R' + (j + 1)), celda(entrada(valor)));
-        $('disponibles').append(tr);
+    $('btn-mas-recurso').addEventListener('click', () => {
+        if (recursos >= MAX_RECURSOS) { mostrarError('El máximo es de ' + MAX_RECURSOS + ' recursos.'); return; }
+        const d = leerDatos();
+        d.asignacion.forEach((f) => f.push(0));
+        d.maximo.forEach((f) => f.push(0));
+        d.disponible.push(0);
+        dibujar(d.asignacion, d.maximo, d.disponible);
     });
-    BASE.forEach(([a, m]) => agregarFila(a, m));
 
-    const EJEMPLOS = {
-        seguro: { disponible: DISPONIBLE, procesos: BASE },
-        interbloqueo: {
-            disponible: [0, 0, 0],
-            procesos: [[[1, 0, 0], [1, 1, 0]], [[0, 1, 0], [1, 1, 0]], [[0, 0, 1], [0, 0, 1]]],
-        },
-    };
+    $('btn-menos-recurso').addEventListener('click', () => {
+        if (recursos <= 1) { mostrarError('Debe quedar al menos un recurso.'); return; }
+        const d = leerDatos();
+        d.asignacion.forEach((f) => f.pop());
+        d.maximo.forEach((f) => f.pop());
+        d.disponible.pop();
+        dibujar(d.asignacion, d.maximo, d.disponible);
+    });
 
     function cargarEjemplo(nombre) {
         const e = EJEMPLOS[nombre];
-        filas.replaceChildren();
-        $('disponibles').querySelectorAll('input').forEach((i, j) => { i.value = e.disponible[j]; });
-        e.procesos.forEach(([a, m]) => agregarFila(a, m));
-        mostrarError('');
-        $('res-banquero').hidden = true;
-        $('res-detectar').hidden = true;
-        $('d-vacio').hidden = false;
+        dibujar(e.procesos.map((p) => p[0]), e.procesos.map((p) => p[1]), e.disponible);
     }
 
     $('btn-ej-seguro').addEventListener('click', () => cargarEjemplo('seguro'));
     $('btn-ej-bloqueo').addEventListener('click', () => cargarEjemplo('interbloqueo'));
+
+    cargarEjemplo('seguro');
 </script>
 @endpush
-
