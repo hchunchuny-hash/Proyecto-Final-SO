@@ -72,6 +72,17 @@
         </section>
     </div>
 
+    <section class="tarjeta seccion" id="sec-pasos" hidden>
+        <h2>Paso a paso del algoritmo</h2>
+        <p class="nota" id="pasos-nota"></p>
+        <div class="caja-tabla">
+            <table class="tabla">
+                <thead><tr><th>Paso</th><th>Proceso</th><th>Necesidad ≤ Trabajo</th><th>Trabajo al terminar</th></tr></thead>
+                <tbody id="pasos"></tbody>
+            </table>
+        </div>
+    </section>
+
     <section class="tarjeta seccion">
         <div class="cab">
             <h2>Detección de interbloqueos</h2>
@@ -174,6 +185,7 @@
         $('res-banquero').hidden = true;
         $('res-detectar').hidden = true;
         $('d-vacio').hidden = false;
+        $('sec-pasos').hidden = true;
     }
 
     function dibujar(asignacion, maximo, disponible) {
@@ -215,6 +227,31 @@
         return { asignacion, maximo, disponible };
     }
 
+    function vector(v) {
+        return '(' + v.join(', ') + ')';
+    }
+
+    function mostrarPasos(pasos, disponible, seguro) {
+        const cuerpo = $('pasos');
+        cuerpo.replaceChildren();
+        const inicio = crear('tr');
+        inicio.append(celda('0'), celda('—'), celda('Trabajo = Disponible'), celda(vector(disponible)));
+        cuerpo.append(inicio);
+        pasos.forEach((p, k) => {
+            const tr = crear('tr');
+            tr.append(
+                celda(String(k + 1)),
+                celda('P' + (p.proceso + 1)),
+                celda(vector(p.necesidad) + ' ≤ ' + vector(p.trabajo_antes)),
+                celda(vector(p.trabajo))
+            );
+            cuerpo.append(tr);
+        });
+        $('pasos-nota').textContent = 'Se toma el primer proceso (desde P1) cuya Necesidad cabe en Trabajo; al terminar devuelve su Asignación.'
+            + (seguro ? '' : ' El algoritmo se detiene: ningún proceso restante cabe en Trabajo.');
+        $('sec-pasos').hidden = false;
+    }
+
     function nombres(indices) {
         return indices.map((i) => 'P' + (i + 1)).join(' → ');
     }
@@ -251,7 +288,8 @@
     }
 
     $('btn-banquero').addEventListener('click', async () => {
-        const r = await enviar(URL_BANQUERO, leerDatos());
+        const datos = leerDatos();
+        const r = await enviar(URL_BANQUERO, datos);
         if (!r) return;
         const caja = $('res-banquero');
         caja.hidden = false;
@@ -260,6 +298,7 @@
         $('b-secuencia').textContent = r.seguro
             ? 'Secuencia segura: ' + nombres(r.secuencia)
             : 'No existe una secuencia segura.';
+        mostrarPasos(r.pasos, datos.disponible, r.seguro);
     });
 
     $('btn-detectar').addEventListener('click', async () => {
