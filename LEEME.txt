@@ -15,8 +15,11 @@ BLOQUE DE RUTAS (dentro del grupo auth):
     Route::get('/interbloqueos', [InterbloqueosController::class, 'index'])->name('interbloqueos.index');
     Route::post('/interbloqueos/banquero', [InterbloqueosController::class, 'banquero'])->name('interbloqueos.banquero');
     Route::post('/interbloqueos/detectar', [InterbloqueosController::class, 'detectar'])->name('interbloqueos.detectar');
+    Route::post('/interbloqueos/solicitud', [InterbloqueosController::class, 'solicitud'])->name('interbloqueos.solicitud');
+    Route::post('/interbloqueos/grafo', [InterbloqueosController::class, 'grafo'])->name('interbloqueos.grafo');
     // ===== fin M4 =====
 
+FUNCIONES: banquero con paso a paso, evaluación de solicitudes de recursos, detección de interbloqueos, grafo de asignación con ciclos y sugerencia de recuperación, de 1 a 6 recursos y hasta 10 procesos.
 MIGRACIONES: ninguna
 COMANDOS NUEVOS PARA EL COMMANDRUNNER: ninguno (M4 solo calcula con matrices)
 LIBRERÍAS EXTERNAS: ninguna
