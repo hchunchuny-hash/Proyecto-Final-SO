@@ -24,6 +24,7 @@
   .nota{color:var(--suave);font-size:12px;margin:6px 0 0}
   .seccion{margin-top:16px}
   #sol-proceso{background:var(--fondo);color:var(--texto);border:1px solid var(--borde);border-radius:var(--radio);padding:5px 8px;font:13px var(--mono)}
+  #grafo{display:block;max-width:100%;height:auto;margin:0 auto}
   .campos-sol{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:13px var(--mono);color:var(--suave)}
 </style>
 @endpush
@@ -114,6 +115,23 @@
             <p class="nota" id="d-detalle"></p>
         </div>
     </section>
+
+    <section class="tarjeta seccion">
+        <div class="cab">
+            <h2>Grafo de asignación de recursos</h2>
+            <button type="button" class="btn sec" id="btn-grafo">Dibujar grafo</button>
+        </div>
+        <p class="nota">Círculos: procesos. Cuadrados: recursos. Línea continua R → P: instancias asignadas. Línea punteada P → R: el proceso espera ese recurso (necesita más de lo disponible).</p>
+        <div class="error msg" id="error-grafo" role="alert"></div>
+        <div class="caja-tabla" id="grafo-caja" hidden>
+            <svg id="grafo" role="img" aria-label="Grafo de asignación de recursos"></svg>
+        </div>
+        <div id="grafo-res" hidden>
+            Estado: <span class="insignia" id="g-estado"></span>
+            <p class="nota" id="g-ciclo"></p>
+            <div id="g-recuperacion"></div>
+        </div>
+    </section>
 @endsection
 
 @push('scripts')
@@ -121,6 +139,7 @@
     const URL_BANQUERO = "{{ route('interbloqueos.banquero') }}";
     const URL_DETECTAR = "{{ route('interbloqueos.detectar') }}";
     const URL_SOLICITUD = "{{ route('interbloqueos.solicitud') }}";
+    const URL_GRAFO = "{{ route('interbloqueos.grafo') }}";
     const TOKEN = document.querySelector('meta[name="csrf-token"]').content;
     const MAX_PROCESOS = 10;
     const MAX_RECURSOS = 6;
@@ -207,6 +226,8 @@
         $('d-vacio').hidden = false;
         $('sec-pasos').hidden = true;
         $('res-solicitud').hidden = true;
+        $('grafo-caja').hidden = true;
+        $('grafo-res').hidden = true;
     }
 
     function dibujar(asignacion, maximo, disponible) {
@@ -366,6 +387,120 @@
         ponerEstado($('s-estado'), texto, clase);
         $('s-motivo').textContent = r.motivo;
         $('s-secuencia').textContent = r.secuencia.length ? 'Secuencia segura: ' + nombres(r.secuencia) : '';
+    });
+
+    const SVG = 'http://www.w3.org/2000/svg';
+
+    function svg(etiqueta, atributos, texto) {
+        const e = document.createElementNS(SVG, etiqueta);
+        Object.entries(atributos).forEach(([k, v]) => e.setAttribute(k, v));
+        if (texto !== undefined) e.textContent = texto;
+        return e;
+    }
+
+    function nombreNodo(id, procesos) {
+        return id < procesos ? 'P' + (id + 1) : 'R' + (id - procesos + 1);
+    }
+
+    function flecha(id, color) {
+        const m = svg('marker', { id, viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto-start-reverse' });
+        m.append(svg('path', { d: 'M 0 0 L 10 5 L 0 10 z', style: 'fill:' + color }));
+        return m;
+    }
+
+    function dibujarGrafo(g, disponible) {
+        const lienzo = $('grafo');
+        lienzo.replaceChildren();
+        const ancho = Math.max(360, Math.max(g.procesos, g.recursos) * 110 + 60);
+        const alto = 280;
+        lienzo.setAttribute('viewBox', '0 0 ' + ancho + ' ' + alto);
+        lienzo.setAttribute('width', ancho);
+
+        const defs = svg('defs', {});
+        defs.append(flecha('f-asig', 'var(--ok)'), flecha('f-sol', 'var(--acento)'), flecha('f-ciclo', 'var(--error)'));
+        lienzo.append(defs);
+
+        const posicion = (id) => (id < g.procesos
+            ? { x: ancho * (id + 1) / (g.procesos + 1), y: 50 }
+            : { x: ancho * (id - g.procesos + 1) / (g.recursos + 1), y: alto - 60 });
+
+        const enCiclo = new Set(g.ciclo.map((de, k) => de + '>' + g.ciclo[(k + 1) % g.ciclo.length]));
+
+        g.aristas.forEach((a) => {
+            const desde = posicion(a.de);
+            const hasta = posicion(a.a);
+            const dx = hasta.x - desde.x;
+            const dy = hasta.y - desde.y;
+            const largo = Math.hypot(dx, dy) || 1;
+            const ux = dx / largo;
+            const uy = dy / largo;
+            const lado = a.tipo === 'asignacion' ? 5 : -5;
+            const ox = -uy * lado;
+            const oy = ux * lado;
+            const ciclo = enCiclo.has(a.de + '>' + a.a);
+            const color = ciclo ? 'var(--error)' : (a.tipo === 'asignacion' ? 'var(--ok)' : 'var(--acento)');
+            const marca = ciclo ? 'f-ciclo' : (a.tipo === 'asignacion' ? 'f-asig' : 'f-sol');
+            const x1 = desde.x + ux * 24 + ox;
+            const y1 = desde.y + uy * 24 + oy;
+            const x2 = hasta.x - ux * 28 + ox;
+            const y2 = hasta.y - uy * 28 + oy;
+            lienzo.append(svg('line', {
+                x1, y1, x2, y2,
+                'marker-end': 'url(#' + marca + ')',
+                'stroke-dasharray': a.tipo === 'solicitud' ? '6 4' : '0',
+                style: 'stroke:' + color + ';stroke-width:' + (ciclo ? 3 : 1.5),
+            }));
+            lienzo.append(svg('text', {
+                x: (x1 + x2) / 2 + ox * 2, y: (y1 + y2) / 2 + oy * 2,
+                style: 'fill:var(--suave);font:11px var(--mono);text-anchor:middle',
+            }, String(a.cantidad)));
+        });
+
+        const nodosCiclo = new Set(g.ciclo);
+        for (let id = 0; id < g.procesos + g.recursos; id++) {
+            const { x, y } = posicion(id);
+            const borde = nodosCiclo.has(id) ? 'var(--error)' : 'var(--acento)';
+            const estilo = 'fill:var(--panel2);stroke:' + borde + ';stroke-width:2';
+            if (id < g.procesos) {
+                lienzo.append(svg('circle', { cx: x, cy: y, r: 22, style: estilo }));
+            } else {
+                lienzo.append(svg('rect', { x: x - 20, y: y - 20, width: 40, height: 40, style: estilo }));
+                lienzo.append(svg('text', {
+                    x, y: y + 36, style: 'fill:var(--suave);font:11px var(--mono);text-anchor:middle',
+                }, 'disp. ' + disponible[id - g.procesos]));
+            }
+            lienzo.append(svg('text', {
+                x, y, style: 'fill:var(--texto);font:700 13px var(--mono);text-anchor:middle;dominant-baseline:central',
+            }, nombreNodo(id, g.procesos)));
+        }
+    }
+
+    function mostrarRecuperacion(g) {
+        const caja = $('g-recuperacion');
+        caja.replaceChildren();
+        if (!g.sugerencia) return;
+        const { terminar, apropiar } = g.sugerencia;
+        caja.append(crear('p', 'Opción 1 · Terminar P' + (terminar.proceso + 1)
+            + ': libera ' + vector(terminar.liberaria) + ' y rompe el ciclo.'));
+        if (apropiar) {
+            caja.append(crear('p', 'Opción 2 · Apropiar: quitarle ' + apropiar.cantidad + ' instancia(s) de R'
+                + (apropiar.recurso + 1) + ' a P' + (apropiar.proceso + 1) + ' para que otro proceso del ciclo pueda avanzar.'));
+        }
+    }
+
+    $('btn-grafo').addEventListener('click', async () => {
+        const datos = leerDatos();
+        const g = await enviar(URL_GRAFO, datos, 'error-grafo');
+        if (!g) return;
+        dibujarGrafo(g, datos.disponible);
+        $('grafo-caja').hidden = false;
+        $('grafo-res').hidden = false;
+        ponerEstado($('g-estado'), g.hayCiclo ? 'CICLO DETECTADO' : 'NO HAY CICLOS', g.hayCiclo ? 'error' : 'ok');
+        $('g-ciclo').textContent = g.hayCiclo
+            ? 'Ciclo: ' + g.ciclo.concat(g.ciclo[0]).map((id) => nombreNodo(id, g.procesos)).join(' → ')
+              + '. Con varias instancias por recurso un ciclo no siempre es interbloqueo: confírmalo con el banquero.'
+            : 'El grafo no tiene ciclos: ningún grupo de procesos se espera en círculo.';
+        mostrarRecuperacion(g);
     });
 
     $('btn-agregar').addEventListener('click', () => {
