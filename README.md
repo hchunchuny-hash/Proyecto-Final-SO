@@ -4,7 +4,7 @@ Aplicación web para observar y administrar, desde el navegador, el sistema oper
 
 Proyecto final del curso de Sistemas Operativos 1, Universidad Mariano Gálvez de Guatemala, Centro de Estudios Chimaltenango. Catedrático: Ing. Josué Jiménez.
 
-**URL pública:** [https://tu-dominio.ejemplo]
+**URL pública:** https://grupodigital4.sbs
 
 ## Integrantes y módulos
 
@@ -83,6 +83,4 @@ El registro de usuarios está deshabilitado. Las cuentas de demostración se ent
 
 Se utilizó Claude (Anthropic) como apoyo para explicar conceptos, preparar borradores de código y redactar documentación. Todo el código fue revisado y probado, y cada integrante es responsable de entender y defender su módulo.
 
-## Capturas de pantalla
 
-[Agregar capturas de inicio, login, bitácora y de cada módulo]

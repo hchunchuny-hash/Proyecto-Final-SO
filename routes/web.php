@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BitacoraController;
 use App\Http\Middleware\RolMiddleware;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ProcesosController;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
 
@@ -25,4 +26,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/bitacora', [BitacoraController::class, 'index'])
         ->middleware(RolMiddleware::class . ':admin')
         ->name('bitacora.index');
+
+    // ===== M1 Procesos =====
+    Route::get('/procesos', [ProcesosController::class, 'index'])->name('procesos.index');
+    Route::post('/procesos/lanzar', [ProcesosController::class, 'lanzar'])
+        ->middleware(RolMiddleware::class . ':admin')
+        ->name('procesos.lanzar');
+    Route::post('/procesos/senal', [ProcesosController::class, 'senal'])
+        ->middleware(RolMiddleware::class . ':admin')
+        ->name('procesos.senal');
+    Route::post('/procesos/prioridad', [ProcesosController::class, 'prioridad'])
+        ->middleware(RolMiddleware::class . ':admin')
+        ->name('procesos.prioridad');
+    // ===== fin M1 =====
+
 });
