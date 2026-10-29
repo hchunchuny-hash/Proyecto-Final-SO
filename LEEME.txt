@@ -1,27 +1,41 @@
-MÓDULO: M4 Interbloqueos
-Autor: Griselda Toma
+MÓDULO: M5 Almacenamiento
+Autor: [nombre completo]
 
 ARCHIVOS NUEVOS:
-- app/Http/Controllers/InterbloqueosController.php
-- app/Services/Banquero.php
-- resources/views/interbloqueos/index.blade.php
-- tests/Unit/BanqueroTest.php
+- app/Services/MonitorAlmacenamiento.php
+- app/Services/ExploradorSeguro.php
+- app/Http/Controllers/AlmacenamientoController.php
+- resources/views/almacenamiento/_pestanas.blade.php
+- resources/views/almacenamiento/_tabla_uso.blade.php
+- resources/views/almacenamiento/index.blade.php
+- resources/views/almacenamiento/usuarios.blade.php
+- resources/views/almacenamiento/explorador.blade.php
 
 USE EN routes/web.php:
-use App\Http\Controllers\InterbloqueosController;
+use App\Http\Controllers\AlmacenamientoController;
 
 BLOQUE DE RUTAS (dentro del grupo auth):
-    // ===== M4 Interbloqueos =====
-    Route::get('/interbloqueos', [InterbloqueosController::class, 'index'])->name('interbloqueos.index');
-    Route::post('/interbloqueos/banquero', [InterbloqueosController::class, 'banquero'])->name('interbloqueos.banquero');
-    Route::post('/interbloqueos/detectar', [InterbloqueosController::class, 'detectar'])->name('interbloqueos.detectar');
-    Route::post('/interbloqueos/solicitud', [InterbloqueosController::class, 'solicitud'])->name('interbloqueos.solicitud');
-    Route::post('/interbloqueos/grafo', [InterbloqueosController::class, 'grafo'])->name('interbloqueos.grafo');
-    // ===== fin M4 =====
+    // ===== M5 Almacenamiento =====
+    Route::get('/almacenamiento', [AlmacenamientoController::class, 'index'])->name('almacenamiento.index');
+    Route::get('/almacenamiento/usuarios', [AlmacenamientoController::class, 'usuarios'])->name('almacenamiento.usuarios');
+    Route::get('/almacenamiento/explorador', [AlmacenamientoController::class, 'explorador'])
+        ->middleware('throttle:60,1')
+        ->name('almacenamiento.explorador');
+    // ===== fin M5 =====
 
-FUNCIONES: banquero con paso a paso, evaluación de solicitudes de recursos, detección de interbloqueos, grafo de asignación con ciclos y sugerencia de recuperación, de 1 a 6 recursos y hasta 10 procesos.
 MIGRACIONES: ninguna
-COMANDOS NUEVOS PARA EL COMMANDRUNNER: ninguno (M4 solo calcula con matrices)
+
+COMANDOS NUEVOS PARA EL COMMANDRUNNER: dos, de solo lectura y con argumentos fijos.
+Agregar en la lista LECTURA de app/Services/CommandRunner.php, debajo de la línea 'montajes':
+        'discos_detalle'  => ['/usr/bin/lsblk', '-P', '-b', '-o', 'NAME,TYPE,SIZE,FSTYPE,MOUNTPOINT,PTTYPE,MODEL,RO,PKNAME'],
+        'montajes_reales' => ['/usr/bin/findmnt', '-P', '--real', '-o', 'TARGET,SOURCE,FSTYPE,OPTIONS'],
+(M5 también usa las claves que ya existían: 'uso_discos' y 'sesiones'.)
+
 LIBRERÍAS EXTERNAS: ninguna
 
-DECLARACIÓN DE USO DE IA: el código se desarrolló con ayuda de Claude (Anthropic). La autora lo revisó, lo probó y puede explicarlo.
+NOTAS DE SEGURIDAD:
+- Todos los comandos pasan por CommandRunner::leer() (lista blanca, sin shell).
+- El explorador solo lista nombres y metadatos; nunca abre archivos. Valida la ruta con realpath() y
+  rechaza (y registra como DENEGADO en la bitácora) todo lo que quede fuera de los directorios base.
+- Directorios base permitidos (constante RAICES en ExploradorSeguro.php): /etc, /home, /var/log, /tmp.
+- Nunca se lee /etc/shadow.
