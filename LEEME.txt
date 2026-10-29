@@ -1,0 +1,41 @@
+MÓDULO: M5 Almacenamiento
+Autor: [nombre completo]
+
+ARCHIVOS NUEVOS:
+- app/Services/MonitorAlmacenamiento.php
+- app/Services/ExploradorSeguro.php
+- app/Http/Controllers/AlmacenamientoController.php
+- resources/views/almacenamiento/_pestanas.blade.php
+- resources/views/almacenamiento/_tabla_uso.blade.php
+- resources/views/almacenamiento/index.blade.php
+- resources/views/almacenamiento/usuarios.blade.php
+- resources/views/almacenamiento/explorador.blade.php
+
+USE EN routes/web.php:
+use App\Http\Controllers\AlmacenamientoController;
+
+BLOQUE DE RUTAS (dentro del grupo auth):
+    // ===== M5 Almacenamiento =====
+    Route::get('/almacenamiento', [AlmacenamientoController::class, 'index'])->name('almacenamiento.index');
+    Route::get('/almacenamiento/usuarios', [AlmacenamientoController::class, 'usuarios'])->name('almacenamiento.usuarios');
+    Route::get('/almacenamiento/explorador', [AlmacenamientoController::class, 'explorador'])
+        ->middleware('throttle:60,1')
+        ->name('almacenamiento.explorador');
+    // ===== fin M5 =====
+
+MIGRACIONES: ninguna
+
+COMANDOS NUEVOS PARA EL COMMANDRUNNER: dos, de solo lectura y con argumentos fijos.
+Agregar en la lista LECTURA de app/Services/CommandRunner.php, debajo de la línea 'montajes':
+        'discos_detalle'  => ['/usr/bin/lsblk', '-P', '-b', '-o', 'NAME,TYPE,SIZE,FSTYPE,MOUNTPOINT,PTTYPE,MODEL,RO,PKNAME'],
+        'montajes_reales' => ['/usr/bin/findmnt', '-P', '--real', '-o', 'TARGET,SOURCE,FSTYPE,OPTIONS'],
+(M5 también usa las claves que ya existían: 'uso_discos' y 'sesiones'.)
+
+LIBRERÍAS EXTERNAS: ninguna
+
+NOTAS DE SEGURIDAD:
+- Todos los comandos pasan por CommandRunner::leer() (lista blanca, sin shell).
+- El explorador solo lista nombres y metadatos; nunca abre archivos. Valida la ruta con realpath() y
+  rechaza (y registra como DENEGADO en la bitácora) todo lo que quede fuera de los directorios base.
+- Directorios base permitidos (constante RAICES en ExploradorSeguro.php): /etc, /home, /var/log, /tmp.
+- Nunca se lee /etc/shadow.
